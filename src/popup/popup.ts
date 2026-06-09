@@ -19,7 +19,7 @@ const progress = createProgressController({
   progressTrack: progressEl.querySelector('[role="progressbar"]'),
 });
 
-let activeTabId: number | undefined;
+let canConvert = false;
 
 function showError(message: string) {
   errorEl.textContent = message;
@@ -28,38 +28,55 @@ function showError(message: string) {
 
 function setLoading(loading: boolean) {
   form.classList.toggle("is-loading", loading);
-  submitBtn.disabled = loading || activeTabId == null;
+  submitBtn.disabled = loading || !canConvert;
 }
 
-async function loadCurrentPage() {
+async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab;
+}
 
+function updatePageDisplay(tab: chrome.tabs.Tab | undefined): boolean {
   if (!tab?.id) {
+    canConvert = false;
     pageTitleEl.textContent = "No active tab";
+    pageUrlEl.textContent = "";
     submitBtn.disabled = true;
-    return;
+    return false;
   }
 
-  activeTabId = tab.id;
-
   if (!tab.url?.startsWith("http")) {
+    canConvert = false;
     pageTitleEl.textContent = tab.title?.trim() || "This page cannot be converted";
     pageUrlEl.textContent = tab.url ?? "";
     submitBtn.disabled = true;
     showError("Open a normal web page (http or https), then try again.");
-    return;
+    return false;
   }
 
+  canConvert = true;
   pageTitleEl.textContent = tab.title?.trim() || "Untitled page";
   pageUrlEl.textContent = tab.url;
   submitBtn.disabled = false;
+  return true;
+}
+
+async function loadCurrentPage() {
+  const tab = await getActiveTab();
+  if (updatePageDisplay(tab)) {
+    showError("");
+  }
 }
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   showError("");
 
-  if (activeTabId == null) {
+  const tab = await getActiveTab();
+  if (!updatePageDisplay(tab)) {
+    if (tab?.id) {
+      return;
+    }
     showError("No active tab to convert.");
     return;
   }
@@ -68,7 +85,7 @@ form.addEventListener("submit", async (event) => {
   progress.start();
 
   try {
-    const message: ConvertMessage = { type: "convert", tabId: activeTabId };
+    const message: ConvertMessage = { type: "convert", tabId: tab!.id! };
     const response = (await chrome.runtime.sendMessage(message)) as ConvertResponse | undefined;
 
     if (!response) {
