@@ -1,0 +1,5 @@
+node_modules/
+dist/
+article-to-print-extension.zip
+*.local
+.DS_Store
