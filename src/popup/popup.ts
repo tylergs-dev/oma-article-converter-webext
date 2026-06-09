@@ -1,5 +1,9 @@
+import { convertAndOpenPreview } from "../lib/convert-tab";
+import { ExtractError } from "../lib/errors";
 import { createProgressController } from "../ui/progress";
-import type { ConvertMessage, ConvertResponse } from "../lib/types";
+import { applyVersionLabel } from "../ui/version";
+
+const CONVERT_TIMEOUT_MS = 90_000;
 
 const form = document.getElementById("convert-form") as HTMLFormElement;
 const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
@@ -29,6 +33,15 @@ function showError(message: string) {
 function setLoading(loading: boolean) {
   form.classList.toggle("is-loading", loading);
   submitBtn.disabled = loading || !canConvert;
+}
+
+function conversionErrorMessage(err: unknown): string {
+  if (err instanceof ExtractError) return err.message;
+  if (err instanceof Error && err.message === "Conversion timed out") {
+    return "Conversion took too long. Try a shorter page or reload and try again.";
+  }
+  if (err instanceof Error) return err.message;
+  return "Conversion failed. Try again.";
 }
 
 async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
@@ -68,16 +81,30 @@ async function loadCurrentPage() {
   }
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error("Conversion timed out")), ms);
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        window.clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   showError("");
 
   const tab = await getActiveTab();
-  if (!updatePageDisplay(tab)) {
-    if (tab?.id) {
-      return;
+  if (!updatePageDisplay(tab) || !tab?.id || !tab.url) {
+    if (!tab?.id) {
+      showError("No active tab to convert.");
     }
-    showError("No active tab to convert.");
     return;
   }
 
@@ -85,29 +112,16 @@ form.addEventListener("submit", async (event) => {
   progress.start();
 
   try {
-    const message: ConvertMessage = { type: "convert", tabId: tab!.id! };
-    const response = (await chrome.runtime.sendMessage(message)) as ConvertResponse | undefined;
-
-    if (!response) {
-      progress.stop(true);
-      showError("No response from extension background.");
-      return;
-    }
-
-    if (!response.ok) {
-      progress.stop(true);
-      showError(response.error);
-      return;
-    }
-
+    await withTimeout(convertAndOpenPreview(tab.id, tab.url), CONVERT_TIMEOUT_MS);
     await progress.finish();
     window.close();
-  } catch {
+  } catch (err) {
     progress.stop(true);
-    showError("Conversion failed. Try again.");
+    showError(conversionErrorMessage(err));
   } finally {
     setLoading(false);
   }
 });
 
+applyVersionLabel(document.getElementById("app-version"));
 loadCurrentPage();

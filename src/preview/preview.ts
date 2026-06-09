@@ -1,5 +1,6 @@
 import type { ConvertResult } from "../lib/types";
 import { PREVIEW_STORAGE_KEY } from "../lib/types";
+import { applyVersionLabel } from "../ui/version";
 
 const titleEl = document.getElementById("print-title") as HTMLHeadingElement;
 const metaEl = document.getElementById("print-meta") as HTMLParagraphElement;
@@ -39,4 +40,5 @@ async function loadPreview() {
 printBtn.addEventListener("click", () => window.print());
 closeBtn.addEventListener("click", () => window.close());
 
+applyVersionLabel(document.getElementById("app-version"));
 loadPreview();

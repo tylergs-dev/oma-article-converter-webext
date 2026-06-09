@@ -6,10 +6,4 @@ export interface ConvertResult {
   html: string;
 }
 
-export type ConvertMessage = { type: "convert"; tabId: number };
-
-export type ConvertResponse =
-  | { ok: true; previewTabId: number }
-  | { ok: false; error: string };
-
 export const PREVIEW_STORAGE_KEY = "lastPreview";
