@@ -2,14 +2,14 @@ import { createProgressController } from "../ui/progress";
 import type { ConvertMessage, ConvertResponse } from "../lib/types";
 
 const form = document.getElementById("convert-form") as HTMLFormElement;
-const urlInput = document.getElementById("url-input") as HTMLInputElement;
 const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+const pageTitleEl = document.getElementById("page-title") as HTMLParagraphElement;
+const pageUrlEl = document.getElementById("page-url") as HTMLParagraphElement;
 const errorEl = document.getElementById("error-message") as HTMLDivElement;
 const progressEl = document.getElementById("conversion-progress") as HTMLDivElement;
 const progressLabel = document.getElementById("progress-label") as HTMLSpanElement;
 const progressPercent = document.getElementById("progress-percent") as HTMLSpanElement;
 const progressFill = document.getElementById("progress-fill") as HTMLDivElement;
-const optionsLink = document.getElementById("options-link") as HTMLAnchorElement;
 
 const progress = createProgressController({
   progressEl,
@@ -19,6 +19,8 @@ const progress = createProgressController({
   progressTrack: progressEl.querySelector('[role="progressbar"]'),
 });
 
+let activeTabId: number | undefined;
+
 function showError(message: string) {
   errorEl.textContent = message;
   errorEl.hidden = !message;
@@ -26,37 +28,47 @@ function showError(message: string) {
 
 function setLoading(loading: boolean) {
   form.classList.toggle("is-loading", loading);
-  submitBtn.disabled = loading;
-  urlInput.disabled = loading;
+  submitBtn.disabled = loading || activeTabId == null;
 }
 
-async function prefillUrlFromActiveTab() {
+async function loadCurrentPage() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.url?.startsWith("http")) {
-    urlInput.value = tab.url;
-  }
-}
 
-optionsLink.addEventListener("click", (event) => {
-  event.preventDefault();
-  chrome.runtime.openOptionsPage();
-});
+  if (!tab?.id) {
+    pageTitleEl.textContent = "No active tab";
+    submitBtn.disabled = true;
+    return;
+  }
+
+  activeTabId = tab.id;
+
+  if (!tab.url?.startsWith("http")) {
+    pageTitleEl.textContent = tab.title?.trim() || "This page cannot be converted";
+    pageUrlEl.textContent = tab.url ?? "";
+    submitBtn.disabled = true;
+    showError("Open a normal web page (http or https), then try again.");
+    return;
+  }
+
+  pageTitleEl.textContent = tab.title?.trim() || "Untitled page";
+  pageUrlEl.textContent = tab.url;
+  submitBtn.disabled = false;
+}
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   showError("");
 
-  const url = urlInput.value.trim();
-  if (!url) return;
+  if (activeTabId == null) {
+    showError("No active tab to convert.");
+    return;
+  }
 
   setLoading(true);
   progress.start();
 
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const tabId = tab?.id;
-
   try {
-    const message: ConvertMessage = { type: "convert", url, tabId };
+    const message: ConvertMessage = { type: "convert", tabId: activeTabId };
     const response = (await chrome.runtime.sendMessage(message)) as ConvertResponse | undefined;
 
     if (!response) {
@@ -75,10 +87,10 @@ form.addEventListener("submit", async (event) => {
     window.close();
   } catch {
     progress.stop(true);
-    showError("Conversion failed. Try again or check extension options.");
+    showError("Conversion failed. Try again.");
   } finally {
     setLoading(false);
   }
 });
 
-prefillUrlFromActiveTab();
+loadCurrentPage();

@@ -6,19 +6,7 @@ export interface ConvertResult {
   html: string;
 }
 
-export interface ExtensionSettings {
-  jinaApiKey: string;
-  jinaFallbackEnabled: boolean;
-}
-
-export const DEFAULT_SETTINGS: ExtensionSettings = {
-  jinaApiKey: "",
-  jinaFallbackEnabled: true,
-};
-
-export type ConvertMessage =
-  | { type: "convert"; url: string; tabId?: number }
-  | { type: "getSettings" };
+export type ConvertMessage = { type: "convert"; tabId: number };
 
 export type ConvertResponse =
   | { ok: true; previewTabId: number }

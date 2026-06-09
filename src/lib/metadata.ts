@@ -66,6 +66,10 @@ export function formatDate(dateStr: string | null | undefined): string | null {
     }
   }
 
+  if (/^(spring|summer|autumn|fall|winter)\s+\d{4}$/i.test(cleaned)) {
+    return cleaned;
+  }
+
   const parsed = Date.parse(cleaned);
   if (!Number.isNaN(parsed)) {
     return new Date(parsed).toLocaleDateString("en-US", {

@@ -35,14 +35,3 @@ export function isBotPage(html: string): boolean {
 
   return false;
 }
-
-export function shouldUseJinaFallback(
-  fallbackEnabled: boolean,
-  statusCode: number | null,
-  html?: string | null,
-): boolean {
-  if (!fallbackEnabled) return false;
-  if (statusCode === 403 || statusCode === 429) return true;
-  if (html != null && isBotPage(html)) return true;
-  return false;
-}

@@ -1,19 +1,19 @@
-# Article to Print (Chrome Extension)
+# Article to Print (Browser Extension)
 
-Convert web articles into clean, text-only documents you can print or save as PDF. Built as a Manifest V3 browser extension with a popup converter, full-tab preview, and optional [Jina Reader](https://jina.ai/reader/) fallback for bot-blocked sites.
+Convert the current web page into a clean, text-only document you can print or save as PDF. Built as a Manifest V3 browser extension with a one-click popup and full-tab print preview.
 
 ## Features
 
-- Convert the current tab or any article URL from the popup
+- One-click conversion of the page you are viewing
+- Reads HTML directly from the open tab (no remote fetching)
 - Reader-style extraction with images, ads, and scripts removed
 - Title, author, source, and publication date in the preview header
 - Print-optimized layout (Print → Save as PDF)
-- Optional Jina API key stored locally for higher fallback success
 
 ## Requirements
 
 - Node.js 20+
-- Google Chrome or another Chromium browser
+- Google Chrome, Microsoft Edge, or another Chromium browser
 
 ## Development
 
@@ -24,12 +24,12 @@ npm run dev
 
 Vite watches the extension and rebuilds on change. Load the unpacked extension from the `dist/` folder:
 
-1. Open `chrome://extensions`
+1. Open `chrome://extensions` or `edge://extensions`
 2. Enable **Developer mode**
 3. Click **Load unpacked**
 4. Select the `dist` directory in this project
 
-After code changes, click **Reload** on the extension card in `chrome://extensions`.
+After code changes, click **Reload** on the extension card.
 
 ## Build and package
 
@@ -61,29 +61,22 @@ Runs Vitest unit tests for extraction helpers (boilerplate detection, bot pages,
 
 ## Usage
 
-1. Open an article in a tab, or click the extension icon.
-2. Confirm the URL and click **Convert**.
-3. Review the preview tab, then click **Print** (or Cmd/Ctrl+P) and choose Save as PDF.
+1. Open an article or web page in a tab.
+2. Click the extension icon.
+3. Click **Convert this page**.
+4. Review the preview tab, then click **Print** (or Cmd/Ctrl+P) and choose Save as PDF.
 
-### Options
+## How it works
 
-Open **Extension options** from the popup (or right-click the extension icon → Options) to configure:
-
-| Setting | Purpose |
-|---------|---------|
-| Jina API key | Optional key for Jina Reader fallback ([get one](https://jina.ai/reader#pricing)) |
-| Enable Jina Reader fallback | Use Jina when direct fetch fails or returns a bot/challenge page |
-
-Settings are stored in `chrome.storage.sync` on your device only.
+The extension reads the live DOM from your current tab using `activeTab` and `scripting` permissions. Extraction runs locally in the extension—nothing is sent to a remote server. This uses your normal browsing session (cookies, login, rendered content), so it works on pages that block automated fetching.
 
 ## Project layout
 
 ```
 src/
-  background/     Service worker (fetch, extract, open preview)
-  popup/          Extension popup UI
+  background/     Service worker (capture tab, extract, open preview)
+  popup/          One-click convert popup
   preview/        Full-tab print preview
-  options/        Jina settings page
   lib/            Extraction, sanitization, validation
   styles/         Shared CSS
   ui/             Shared UI helpers
@@ -91,8 +84,8 @@ src/
 
 ## Limitations
 
-- Paywalled, JavaScript-only, or heavily bot-protected pages may still fail.
-- Jina free tier has rate limits; an API key improves success on blocked domains.
+- Only converts the page currently open in the active tab.
+- Paywalled or heavily dynamic pages may still extract poorly if content is not in the DOM.
 - Extraction quality depends on the source HTML structure.
 - For personal/archival use; respect site terms of service and copyright.
 

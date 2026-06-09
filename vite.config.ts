@@ -10,7 +10,6 @@ export default defineConfig({
       input: {
         popup: "src/popup/popup.html",
         preview: "src/preview/preview.html",
-        options: "src/options/options.html",
       },
     },
   },

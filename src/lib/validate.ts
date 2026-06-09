@@ -41,8 +41,3 @@ export function validateUrl(url: string): string {
 
   return url;
 }
-
-export function originPatternForUrl(url: string): string {
-  const parsed = new URL(url);
-  return `${parsed.protocol}//${parsed.host}/*`;
-}

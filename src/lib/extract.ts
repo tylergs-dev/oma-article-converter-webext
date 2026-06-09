@@ -238,8 +238,3 @@ export function extractArticle(url: string, html: string): ConvertResult {
     html: bodyHtml,
   };
 }
-
-export function isWeakExtraction(result: ConvertResult): boolean {
-  const text = result.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  return text.length < 400;
-}

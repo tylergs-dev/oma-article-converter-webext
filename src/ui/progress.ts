@@ -1,7 +1,6 @@
 const CONVERSION_STEPS = [
-  { label: "Checking URL", max: 12 },
-  { label: "Downloading page", max: 45 },
-  { label: "Extracting article", max: 78 },
+  { label: "Reading page", max: 35 },
+  { label: "Extracting article", max: 75 },
   { label: "Formatting for print", max: 92 },
 ];
 
