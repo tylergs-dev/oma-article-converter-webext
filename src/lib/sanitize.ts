@@ -9,21 +9,30 @@ const REMOVE_TAGS = new Set([
 
 const ALLOWED_TAGS = [
   "p", "h2", "h3", "h4", "ul", "ol", "li", "blockquote",
-  "strong", "b", "em", "i", "a", "br", "div", "span",
+  "strong", "b", "em", "i", "br", "div", "span",
   "table", "thead", "tbody", "tr", "th", "td",
 ];
 
 export const JUNK_CLASS_PATTERN =
-  /newsletter|subscribe|signup|advert|promo|social-?share|share-?bar|related-?content|disclaimer|article-topics|wcp-item/i;
+  /newsletter|subscribe|signup|advert|promo|social-?share|share-?bar|related-?content|disclaimer|article-topics|wcp-item|news-article__more|news-article__legal|mdc-feed|basic-feed-item|feed-section|article-image|mdc-article-image/i;
 
 export const ARTICLE_CONTAINER_SELECTORS = [
+  ".news-article__body__mdc",
+  ".mdc-article-body",
+  '[itemprop~="articleBody"]',
   ".article__body",
-  '[itemprop="articleBody"]',
   ".article-body",
   ".entry-content",
   ".post-content",
   "article",
 ];
+
+export function unwrapLinks(root: Element): void {
+  root.querySelectorAll("a").forEach((anchor) => {
+    const text = anchor.textContent ?? "";
+    anchor.replaceWith(anchor.ownerDocument.createTextNode(text));
+  });
+}
 
 export const BLOCK_TAGS = [
   "h2", "h3", "h4", "p", "ul", "ol", "blockquote", "table",
@@ -50,14 +59,12 @@ function stripUnwanted(root: Element): void {
       el.remove();
       return;
     }
-    const href = el.getAttribute("href");
     for (const attr of [...el.attributes]) {
       el.removeAttribute(attr.name);
     }
-    if (tag === "a" && href) {
-      el.setAttribute("href", href);
-    }
   });
+
+  unwrapLinks(root);
 }
 
 export function sanitizeHtml(html: string): string {
@@ -66,7 +73,7 @@ export function sanitizeHtml(html: string): string {
   const purify = getPurify();
   const cleaned = purify.sanitize(html, {
     ALLOWED_TAGS,
-    ALLOWED_ATTR: ["href"],
+    ALLOWED_ATTR: [],
   });
 
   const { document } = parseHTML(`<!DOCTYPE html><html><body>${cleaned}</body></html>`);

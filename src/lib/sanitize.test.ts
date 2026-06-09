@@ -18,12 +18,13 @@ describe("sanitizeHtml", () => {
     expect(result).toContain("Text");
   });
 
-  it("strips unsafe attributes but keeps href on links", () => {
+  it("unwraps links to plain text for print-friendly output", () => {
     const html = '<p onclick="evil()">Read <a href="https://example.com" target="_blank">more</a></p>';
     const result = sanitizeHtml(html);
     expect(result).not.toContain("onclick");
     expect(result).not.toContain("target");
-    expect(result).toContain('href="https://example.com"');
+    expect(result).not.toContain("<a");
+    expect(result).toContain("more");
   });
 
   it("returns empty string for blank or text-only junk", () => {

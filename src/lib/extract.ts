@@ -7,11 +7,13 @@ import {
 } from "./boilerplate";
 import { ExtractError } from "./errors";
 import { domainFromUrl, fallbackMetadata, formatDate } from "./metadata";
+import { parseReadableArticle, readableContentToHtml } from "./readable";
 import {
   ARTICLE_CONTAINER_SELECTORS,
   BLOCK_TAGS,
   JUNK_CLASS_PATTERN,
   sanitizeHtml,
+  unwrapLinks,
 } from "./sanitize";
 import type { ConvertResult } from "./types";
 
@@ -87,10 +89,13 @@ function extractFromContainer(container: Element): string | null {
       }
 
       if (tag.tagName.toLowerCase() === "p") {
-        const text = normalizeText(tag.textContent ?? "");
-        if (isBoilerplateParagraph(text)) return;
+        const clone = tag.cloneNode(true) as Element;
+        pruneArticleContainer(clone);
+        unwrapLinks(clone);
+        const text = normalizeText(clone.textContent ?? "");
+        if (!text || isBoilerplateParagraph(text)) return;
         if (text.toLowerCase() === "about adviser intel") return;
-        blocks.push(`<p>${text}</p>`);
+        blocks.push(clone.outerHTML);
         return;
       }
 
@@ -112,6 +117,7 @@ function extractFromContainer(container: Element): string | null {
       if (["ul", "ol", "blockquote", "table"].includes(tag.tagName.toLowerCase())) {
         const clone = tag.cloneNode(true) as Element;
         pruneArticleContainer(clone);
+        unwrapLinks(clone);
         if (clone.textContent?.trim()) {
           blocks.push(clone.outerHTML);
         }
@@ -123,47 +129,43 @@ function extractFromContainer(container: Element): string | null {
   return blocks.join("\n");
 }
 
-function removeBoilerplateParagraphs(root: Element): void {
-  root.querySelectorAll("p").forEach((p) => {
-    if (isBoilerplateParagraph(p.textContent ?? "")) {
-      p.remove();
+const STANDALONE_DATELINE =
+  /^[A-Z][A-Z\s,.'-]+,?\s+[A-Z][a-z]+\.?,?\s+\d{1,2},?\s+\d{4}$/;
+
+function polishArticleBody(root: Element, title: string | null): void {
+  const titleNorm = normalizeText(title ?? "").toLowerCase();
+
+  root.querySelectorAll("h2, h3, h4").forEach((heading) => {
+    const text = normalizeText(heading.textContent ?? "");
+    if (isPromoHeading(text)) {
+      heading.remove();
+      return;
+    }
+    if (titleNorm && text.toLowerCase() === titleNorm) {
+      heading.remove();
     }
   });
-}
 
-function restoreHeadingsFromSource(bodyRoot: Element, source: Element | null): void {
-  if (!source) return;
-
-  const headingTexts: [string, string][] = [];
-  for (const level of ["h2", "h3", "h4"]) {
-    source.querySelectorAll(level).forEach((heading) => {
-      const text = normalizeText(heading.textContent ?? "");
-      if (text && !isPromoHeading(text)) {
-        headingTexts.push([level, text]);
-      }
-    });
-  }
-
-  for (const [level, text] of headingTexts) {
-    bodyRoot.querySelectorAll("p").forEach((p) => {
-      if (normalizeText(p.textContent ?? "") === text) {
-        const replacement = p.ownerDocument.createElement(level);
-        replacement.textContent = text;
-        p.replaceWith(replacement);
-      }
-    });
-  }
-}
-
-function trimLeadingNoise(root: Element, title: string | null): void {
-  const titleNorm = normalizeText(title ?? "");
   for (const p of [...root.querySelectorAll("p")]) {
     const text = normalizeText(p.textContent ?? "");
     if (isBoilerplateParagraph(text)) {
       p.remove();
       continue;
     }
-    if (titleNorm && text === titleNorm) {
+    if (titleNorm && text.toLowerCase() === titleNorm) {
+      p.remove();
+      continue;
+    }
+    if (STANDALONE_DATELINE.test(text) && !text.includes("/PRNewswire/")) {
+      p.remove();
+      continue;
+    }
+    break;
+  }
+
+  for (const p of [...root.querySelectorAll("p")].reverse()) {
+    const text = normalizeText(p.textContent ?? "");
+    if (isBoilerplateParagraph(text)) {
       p.remove();
       continue;
     }
@@ -171,9 +173,15 @@ function trimLeadingNoise(root: Element, title: string | null): void {
   }
 }
 
-function extractBodyHtml(html: string, _url: string): string | null {
+function extractBodyHtml(html: string): string | null {
   const { document } = parseHTML(html);
   const container = findArticleContainer(document);
+
+  const readable = parseReadableArticle(document);
+  if (readable) {
+    const body = readableContentToHtml(readable.content, container, isPromoHeading);
+    if (body) return body;
+  }
 
   if (container) {
     const direct = extractFromContainer(container);
@@ -185,25 +193,17 @@ function extractBodyHtml(html: string, _url: string): string | null {
     }
   }
 
-  const reader = new Readability(document, { charThreshold: 100 });
-  const article = reader.parse();
-  if (article?.content) {
-    const { document: bodyDoc } = parseHTML(
-      `<!DOCTYPE html><html><body>${article.content}</body></html>`,
-    );
-    removeBoilerplateParagraphs(bodyDoc.body);
-    restoreHeadingsFromSource(bodyDoc.body, container);
-    if (bodyDoc.body.textContent?.trim()) {
-      return bodyDoc.body.innerHTML;
-    }
-  }
-
-  if (container) {
-    const fallback = extractFromContainer(container);
-    if (fallback) return fallback;
-  }
-
   return null;
+}
+
+function finalizeBodyHtml(rawBody: string, title: string | null): string {
+  const { document: bodyDoc } = parseHTML(
+    `<!DOCTYPE html><html><body>${rawBody}</body></html>`,
+  );
+  polishArticleBody(bodyDoc.body, title);
+  return sanitizeHtml(
+    bodyDoc.body.textContent?.trim() ? bodyDoc.body.innerHTML : "",
+  );
 }
 
 export function extractArticle(url: string, html: string): ConvertResult {
@@ -217,14 +217,8 @@ export function extractArticle(url: string, html: string): ConvertResult {
   const source = fallbacks.source || domainFromUrl(url) || null;
   const dateRaw = fallbacks.date;
 
-  const rawBody = extractBodyHtml(html, url);
-  const { document: bodyDoc } = parseHTML(
-    `<!DOCTYPE html><html><body>${rawBody ?? ""}</body></html>`,
-  );
-  trimLeadingNoise(bodyDoc.body, title);
-  const bodyHtml = sanitizeHtml(
-    bodyDoc.body.textContent?.trim() ? bodyDoc.body.innerHTML : "",
-  );
+  const rawBody = extractBodyHtml(html);
+  const bodyHtml = rawBody ? finalizeBodyHtml(rawBody, title) : "";
 
   if (!bodyHtml) {
     throw new ExtractError("Could not extract article content");
