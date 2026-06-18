@@ -17,6 +17,26 @@ import {
 } from "./sanitize";
 import type { ConvertResult } from "./types";
 
+const PROMO_SELECTORS = [
+  '[id^="blueconic"]',
+  '[id*="blueconic-article"]',
+  ".blueconic-article__wrapper",
+  ".blueconic-article__wrapper__top",
+  ".blueconic-article__wrapper__bottom",
+  ".ad-unit",
+  '[class*="blueconic"]',
+  ".vanilla-blueconic-header-wrapper",
+  ".slice-author-bio",
+  ".slice-container-authorBio",
+  '[class*="authorBio"]',
+];
+
+function stripInArticlePromos(document: Document): void {
+  for (const selector of PROMO_SELECTORS) {
+    document.querySelectorAll(selector).forEach((el) => el.remove());
+  }
+}
+
 function findArticleContainer(document: Document): Element | null {
   for (const selector of ARTICLE_CONTAINER_SELECTORS) {
     for (const element of document.querySelectorAll(selector)) {
@@ -146,6 +166,14 @@ function polishArticleBody(root: Element, title: string | null): void {
     }
   });
 
+  root.querySelectorAll("div, aside, section").forEach((el) => {
+    const text = normalizeText(el.textContent ?? "");
+    if (!text || text.length > 400) return;
+    if (isPromoHeading(text) || isBoilerplateParagraph(text)) {
+      el.remove();
+    }
+  });
+
   for (const p of [...root.querySelectorAll("p")]) {
     const text = normalizeText(p.textContent ?? "");
     if (isBoilerplateParagraph(text)) {
@@ -175,6 +203,7 @@ function polishArticleBody(root: Element, title: string | null): void {
 
 function extractBodyHtml(html: string): string | null {
   const { document } = parseHTML(html);
+  stripInArticlePromos(document);
   const container = findArticleContainer(document);
 
   const readable = parseReadableArticle(document);

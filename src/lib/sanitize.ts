@@ -14,7 +14,7 @@ const ALLOWED_TAGS = [
 ];
 
 export const JUNK_CLASS_PATTERN =
-  /newsletter|subscribe|signup|advert|promo|social-?share|share-?bar|related-?content|disclaimer|article-topics|wcp-item|news-article__more|news-article__legal|mdc-feed|basic-feed-item|feed-section|article-image|mdc-article-image/i;
+  /newsletter|subscribe|signup|advert|promo|social-?share|share-?bar|related-?content|disclaimer|article-topics|wcp-item|news-article__more|news-article__legal|mdc-feed|basic-feed-item|feed-section|article-image|mdc-article-image|blueconic|ad-unit|author-bio|authorBio|vanilla-blueconic/i;
 
 export const ARTICLE_CONTAINER_SELECTORS = [
   ".news-article__body__mdc",

@@ -83,4 +83,25 @@ describe("fallbackMetadata", () => {
     expect(meta.author).toBe("Alex Writer");
     expect(meta.date).toBe("2023-12-01");
   });
+
+  it("ignores URL-only article:author meta and prefers named author sources", () => {
+    const html = `<!DOCTYPE html>
+      <html>
+        <head>
+          <meta property="article:author" content="https://www.kiplinger.com/author/kelley-r-taylor" />
+          <meta property="mrf:authors" content="Kelley R. Taylor" />
+          <script type="application/ld+json">
+            {
+              "@type": "NewsArticle",
+              "author": { "name": "JSON-LD Author" }
+            }
+          </script>
+        </head>
+        <body></body>
+      </html>`;
+
+    const meta = fallbackMetadata(html, "https://www.kiplinger.com/story");
+
+    expect(meta.author).toBe("Kelley R. Taylor");
+  });
 });

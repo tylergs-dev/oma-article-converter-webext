@@ -13,6 +13,17 @@ function metaContent(
   return null;
 }
 
+function looksLikeUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim());
+}
+
+function normalizeAuthorValue(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed || looksLikeUrl(trimmed)) return null;
+  return trimmed;
+}
+
 function jsonLdAuthor(data: Record<string, unknown>): string | null {
   const author = data.author;
   if (typeof author === "string") return author;
@@ -101,12 +112,22 @@ export function fallbackMetadata(html: string, url: string): FallbackMetadata {
   }
 
   let author =
-    metaContent(
-      document,
-      ["name", "author"],
-      ["property", "article:author"],
-      ["name", "dc.creator"],
+    normalizeAuthorValue(
+      metaContent(document, ["name", "author"], ["name", "dc.creator"]),
     ) ?? null;
+
+  if (!author) {
+    author =
+      normalizeAuthorValue(metaContent(document, ["property", "mrf:authors"])) ??
+      null;
+  }
+
+  if (!author) {
+    author =
+      normalizeAuthorValue(
+        metaContent(document, ["property", "article:author"]),
+      ) ?? null;
+  }
 
   let source =
     metaContent(
