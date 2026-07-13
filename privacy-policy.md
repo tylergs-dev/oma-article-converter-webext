@@ -1,13 +1,14 @@
 # Privacy Policy — Article to Print
 
-**Last updated:** June 9, 2026
+**Last updated:** July 13, 2026
 
 Article to Print is a browser extension that converts the current web page into printable text. This policy describes what data the extension handles and how.
 
 ## Summary
 
-- The extension processes page content **only when you click Convert** on the page you are viewing.
-- Conversion reads HTML from your open tab locally in the browser.
+- The extension processes page content **only when you click Convert** or **AI conversion** on the page you are viewing.
+- Local conversion reads HTML from your open tab and extracts article text in the browser.
+- AI conversion also reads HTML locally, then sends trimmed page HTML to OpenRouter using **your** API key so a model can extract the article.
 - We do not operate a backend server; no article content is sent to us.
 
 ## Data the extension accesses
@@ -17,13 +18,18 @@ Article to Print is a browser extension that converts the current web page into 
 When you convert a page, the extension:
 
 - Reads HTML from the active tab in your browser
-- Extracts article text locally for the print preview
+- For **Convert this page**: extracts article text locally for the print preview
+- For **AI conversion**: trims the HTML and sends it to OpenRouter (`https://openrouter.ai`) with your saved API key to extract the article
 
 Converted article data is stored temporarily in **session storage** for the preview tab and is cleared when the browser session ends.
 
+### OpenRouter API key
+
+If you use AI conversion, you may save an OpenRouter API key in the extension Options page. That key is stored only in your browser’s local extension storage. It is sent to OpenRouter only when you click **AI conversion**.
+
 ## Data we do not collect
 
-The extension does not include analytics, advertising, account sign-in, or remote fetching services. We do not receive or store your browsing history or converted articles on our servers.
+The extension does not include analytics, advertising, or account sign-in with us. We do not receive or store your browsing history, API key, or converted articles on our servers.
 
 ## Permissions
 
@@ -33,8 +39,9 @@ The extension requests browser permissions needed for conversion:
 |------------|-----|
 | `activeTab` | Read the open tab when you click Convert |
 | `scripting` | Extract HTML from the active tab |
-| `storage` | Pass preview data to the preview page |
+| `storage` | Pass preview data to the preview page and store your OpenRouter API key locally |
 | `tabs` | Open the preview tab and read the active tab URL |
+| Host access to `openrouter.ai` | Send trimmed page HTML for AI conversion when you choose that option |
 
 ## Children’s privacy
 

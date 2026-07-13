@@ -2,6 +2,7 @@ import { capturePageHtml } from "./capture-page";
 import { isBotPage } from "./bot-detect";
 import { ExtractError } from "./errors";
 import { extractArticle } from "./extract";
+import { extractArticleWithAi } from "./extract-ai";
 import { PREVIEW_STORAGE_KEY, type ConvertResult } from "./types";
 import { validateUrl } from "./validate";
 
@@ -31,7 +32,10 @@ export async function captureHtmlFromTab(tabId: number): Promise<string> {
   return html;
 }
 
-export async function convertTabToResult(tabId: number, url: string): Promise<ConvertResult> {
+async function captureValidatedHtml(tabId: number, url: string): Promise<{
+  safeUrl: string;
+  html: string;
+}> {
   const safeUrl = validateUrl(url);
   const html = await captureHtmlFromTab(tabId);
 
@@ -41,7 +45,20 @@ export async function convertTabToResult(tabId: number, url: string): Promise<Co
     );
   }
 
+  return { safeUrl, html };
+}
+
+export async function convertTabToResult(tabId: number, url: string): Promise<ConvertResult> {
+  const { safeUrl, html } = await captureValidatedHtml(tabId, url);
   return extractArticle(safeUrl, html);
+}
+
+export async function convertTabWithAiToResult(
+  tabId: number,
+  url: string,
+): Promise<ConvertResult> {
+  const { safeUrl, html } = await captureValidatedHtml(tabId, url);
+  return extractArticleWithAi(safeUrl, html);
 }
 
 export async function openPreview(result: ConvertResult): Promise<void> {
@@ -53,5 +70,13 @@ export async function openPreview(result: ConvertResult): Promise<void> {
 
 export async function convertAndOpenPreview(tabId: number, url: string): Promise<void> {
   const result = await convertTabToResult(tabId, url);
+  await openPreview(result);
+}
+
+export async function convertTabWithAiAndOpenPreview(
+  tabId: number,
+  url: string,
+): Promise<void> {
+  const result = await convertTabWithAiToResult(tabId, url);
   await openPreview(result);
 }

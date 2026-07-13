@@ -1,12 +1,18 @@
-import { convertAndOpenPreview } from "../lib/convert-tab";
+import {
+  convertAndOpenPreview,
+  convertTabWithAiAndOpenPreview,
+} from "../lib/convert-tab";
 import { ExtractError } from "../lib/errors";
 import { createProgressController } from "../ui/progress";
 import { applyVersionLabel } from "../ui/version";
 
 const CONVERT_TIMEOUT_MS = 90_000;
+const AI_CONVERT_TIMEOUT_MS = 120_000;
 
 const form = document.getElementById("convert-form") as HTMLFormElement;
 const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+const aiConvertBtn = document.getElementById("ai-convert-btn") as HTMLButtonElement;
+const optionsLink = document.getElementById("options-link") as HTMLAnchorElement;
 const pageTitleEl = document.getElementById("page-title") as HTMLParagraphElement;
 const pageUrlEl = document.getElementById("page-url") as HTMLParagraphElement;
 const errorEl = document.getElementById("error-message") as HTMLDivElement;
@@ -30,9 +36,11 @@ function showError(message: string) {
   errorEl.hidden = !message;
 }
 
-function setLoading(loading: boolean) {
+function setLoading(loading: boolean, mode: "local" | "ai" = "local") {
   form.classList.toggle("is-loading", loading);
+  form.classList.toggle("is-ai-loading", loading && mode === "ai");
   submitBtn.disabled = loading || !canConvert;
+  aiConvertBtn.disabled = loading || !canConvert;
 }
 
 function conversionErrorMessage(err: unknown): string {
@@ -55,6 +63,7 @@ function updatePageDisplay(tab: chrome.tabs.Tab | undefined): boolean {
     pageTitleEl.textContent = "No active tab";
     pageUrlEl.textContent = "";
     submitBtn.disabled = true;
+    aiConvertBtn.disabled = true;
     return false;
   }
 
@@ -63,6 +72,7 @@ function updatePageDisplay(tab: chrome.tabs.Tab | undefined): boolean {
     pageTitleEl.textContent = tab.title?.trim() || "This page cannot be converted";
     pageUrlEl.textContent = tab.url ?? "";
     submitBtn.disabled = true;
+    aiConvertBtn.disabled = true;
     showError("Open a normal web page (http or https), then try again.");
     return false;
   }
@@ -71,6 +81,7 @@ function updatePageDisplay(tab: chrome.tabs.Tab | undefined): boolean {
   pageTitleEl.textContent = tab.title?.trim() || "Untitled page";
   pageUrlEl.textContent = tab.url;
   submitBtn.disabled = false;
+  aiConvertBtn.disabled = false;
   return true;
 }
 
@@ -96,8 +107,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
+async function runConversion(
+  mode: "local" | "ai",
+  convert: (tabId: number, url: string) => Promise<void>,
+  timeoutMs: number,
+) {
   showError("");
 
   const tab = await getActiveTab();
@@ -108,11 +122,11 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
-  setLoading(true);
+  setLoading(true, mode);
   progress.start();
 
   try {
-    await withTimeout(convertAndOpenPreview(tab.id, tab.url), CONVERT_TIMEOUT_MS);
+    await withTimeout(convert(tab.id, tab.url), timeoutMs);
     await progress.finish();
     window.close();
   } catch (err) {
@@ -121,6 +135,20 @@ form.addEventListener("submit", async (event) => {
   } finally {
     setLoading(false);
   }
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await runConversion("local", convertAndOpenPreview, CONVERT_TIMEOUT_MS);
+});
+
+aiConvertBtn.addEventListener("click", async () => {
+  await runConversion("ai", convertTabWithAiAndOpenPreview, AI_CONVERT_TIMEOUT_MS);
+});
+
+optionsLink.addEventListener("click", (event) => {
+  event.preventDefault();
+  chrome.runtime.openOptionsPage();
 });
 
 applyVersionLabel(document.getElementById("app-version"));

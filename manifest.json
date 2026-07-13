@@ -4,6 +4,7 @@
   "version": "1.0.2",
   "description": "Convert the current page into clean, printable text for screen readers and PDF.",
   "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "host_permissions": ["https://openrouter.ai/*"],
   "background": {
     "service_worker": "src/background/service-worker.ts",
     "type": "module"
@@ -16,6 +17,10 @@
       "48": "public/icons/icon48.png",
       "128": "public/icons/icon128.png"
     }
+  },
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
   },
   "icons": {
     "16": "public/icons/icon16.png",
