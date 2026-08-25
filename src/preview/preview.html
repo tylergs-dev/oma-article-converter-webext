@@ -10,16 +10,22 @@
   <body>
     <div class="page">
       <div class="preview-toolbar no-print">
-        <span class="preview-label">
-          Preview
+        <span id="preview-label" class="preview-label">
+          <span id="preview-label-text">Preview</span>
           <span id="app-version" class="app-version" aria-label="Extension version"></span>
         </span>
         <div class="preview-actions">
+          <button type="button" id="edit-btn" class="btn btn-ghost">Edit</button>
+          <button type="button" id="done-btn" class="btn btn-primary" hidden>Done editing</button>
+          <button type="button" id="reset-btn" class="btn btn-ghost" hidden>Reset</button>
           <button type="button" id="print-btn" class="btn btn-primary">Print</button>
           <button type="button" id="close-btn" class="btn btn-ghost">Close tab</button>
         </div>
       </div>
-      <article class="print-article">
+      <p id="preview-hint" class="preview-hint no-print" hidden>
+        Select and delete leftover text, or type to fix paragraphs.
+      </p>
+      <article id="print-article" class="print-article">
         <h1 id="print-title" class="print-title"></h1>
         <p id="print-meta" class="print-meta"></p>
         <div id="print-body" class="print-body"></div>

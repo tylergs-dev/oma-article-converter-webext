@@ -423,6 +423,31 @@ body.popup-body .page {
   gap: 0.5rem;
 }
 
+.preview-hint {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin: -0.5rem 0 1rem;
+}
+
+.print-article--editing {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+}
+
+.print-title[contenteditable="true"],
+.print-body[contenteditable="true"] {
+  cursor: text;
+  border-radius: var(--radius-sm);
+  outline: 1px dashed var(--border-focus);
+  outline-offset: 4px;
+}
+
+.print-title[contenteditable="true"]:focus,
+.print-body[contenteditable="true"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
 .print-article {
   background: var(--card);
   padding: 2.5rem 2rem;
@@ -642,9 +667,11 @@ body.popup-body .page {
     margin: 0;
   }
 
-  .print-article {
+  .print-article,
+  .print-article--editing {
     box-shadow: none;
     border: none;
+    outline: none;
     padding: 0;
     border-radius: 0;
   }
@@ -660,6 +687,11 @@ body.popup-body .page {
 
   .print-body {
     font-size: 11pt;
+  }
+
+  .print-title[contenteditable="true"],
+  .print-body[contenteditable="true"] {
+    outline: none;
   }
 
   .print-body p,
