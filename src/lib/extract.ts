@@ -152,6 +152,70 @@ function extractFromContainer(container: Element): string | null {
 const STANDALONE_DATELINE =
   /^[A-Z][A-Z\s,.'-]+,?\s+[A-Z][a-z]+\.?,?\s+\d{1,2},?\s+\d{4}$/;
 
+function paragraphContinues(previousText: string, nextText: string, next: Element): boolean {
+  if (/^[.,;:—–-]/.test(nextText)) return true;
+  if (/^[a-z("']/.test(nextText)) return true;
+  if (
+    nextText.length <= 80 &&
+    !/[.!?]/.test(nextText) &&
+    next.querySelector("span, em, i, strong, b") &&
+    !next.querySelector("ul, ol, table")
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Hoist lone paragraphs out of wrapper divs left by glossary popover embeds. */
+function flattenSingleParagraphDivs(root: Element): void {
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    for (const div of root.querySelectorAll("div")) {
+      const blockChildren = [...div.children].filter((child) => {
+        const tag = child.tagName.toLowerCase();
+        return tag !== "br" && (BLOCK_TAGS.includes(tag as (typeof BLOCK_TAGS)[number]) || tag === "div");
+      });
+
+      if (blockChildren.length === 1 && blockChildren[0].tagName === "P") {
+        div.replaceWith(blockChildren[0]);
+        changed = true;
+        break;
+      }
+    }
+  }
+}
+
+/** Rejoin paragraphs split by inline glossary popovers (e.g. Morningstar dictionary terms). */
+function mergeSplitParagraphs(root: Element): void {
+  let merged = true;
+
+  while (merged) {
+    merged = false;
+
+    for (const current of root.querySelectorAll("p")) {
+      const next = current.nextElementSibling;
+      if (!next || next.tagName !== "P") continue;
+
+      const currentText = normalizeText(current.textContent ?? "");
+      const nextText = normalizeText(next.textContent ?? "");
+      if (!currentText || !nextText) continue;
+
+      const currentEndsSentence = /[.!?]["'”)]*$/.test(currentText);
+      if (!currentEndsSentence && paragraphContinues(currentText, nextText, next)) {
+        const nextHtml = next.innerHTML.trimStart();
+        const separator = /^[.,;:—–-]/.test(nextText) ? "" : " ";
+        current.innerHTML = `${current.innerHTML.trimEnd()}${separator}${nextHtml}`;
+        next.remove();
+        merged = true;
+        break;
+      }
+    }
+  }
+}
+
 function polishArticleBody(root: Element, title: string | null): void {
   const titleNorm = normalizeText(title ?? "").toLowerCase();
 
@@ -199,6 +263,13 @@ function polishArticleBody(root: Element, title: string | null): void {
     }
     break;
   }
+
+  polishSplitParagraphs(root);
+}
+
+function polishSplitParagraphs(root: Element): void {
+  flattenSingleParagraphDivs(root);
+  mergeSplitParagraphs(root);
 }
 
 function extractBodyHtml(html: string): string | null {
@@ -230,9 +301,16 @@ function finalizeBodyHtml(rawBody: string, title: string | null): string {
     `<!DOCTYPE html><html><body>${rawBody}</body></html>`,
   );
   polishArticleBody(bodyDoc.body, title);
-  return sanitizeHtml(
+  const sanitized = sanitizeHtml(
     bodyDoc.body.textContent?.trim() ? bodyDoc.body.innerHTML : "",
   );
+  if (!sanitized) return "";
+
+  const { document: finalDoc } = parseHTML(
+    `<!DOCTYPE html><html><body>${sanitized}</body></html>`,
+  );
+  polishSplitParagraphs(finalDoc.body);
+  return finalDoc.body.textContent?.trim() ? finalDoc.body.innerHTML : "";
 }
 
 export function extractArticle(url: string, html: string): ConvertResult {

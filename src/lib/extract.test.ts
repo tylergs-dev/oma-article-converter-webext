@@ -8,7 +8,29 @@ const morningstarUrl =
 
 const kiplingerUrl = "https://www.kiplinger.com/taxes/trump-tax-bill-summary";
 
+const morningstarOvervaluedUrl =
+  "https://www.morningstar.com/stocks/11-newly-overvalued-stocks-this-week";
+
 describe("extractArticle", () => {
+  it("keeps Morningstar glossary terms in a single paragraph", () => {
+    const html = readFileSync(
+      join(process.cwd(), "test/fixtures/morningstar-overvalued-stocks.html"),
+      "utf8",
+    );
+    const result = extractArticle(morningstarOvervaluedUrl, html);
+
+    expect(result.title).toContain("Overvalued Stocks");
+    expect(result.html).toMatch(
+      /Once a week,[\s\S]*?Morningstar Ratings[\s\S]*?1-star territory\.<\/p>/i,
+    );
+    expect(result.html).not.toMatch(
+      /<p>\s*<span>Morningstar Ratings<\/span>\s*<\/p>/i,
+    );
+    expect(result.html).toMatch(
+      /fair value estimate[\s\S]*?Uncertainty Rating[\s\S]*?considered overvalued\./i,
+    );
+  });
+
   it("extracts Morningstar PR Newswire article without related headlines, images, or links", () => {
     const html = readFileSync(
       join(process.cwd(), "test/fixtures/morningstar-pr-newswire.html"),
