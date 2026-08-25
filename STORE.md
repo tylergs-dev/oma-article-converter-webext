@@ -95,6 +95,25 @@ Replace with your published URLs before submission, for example:
 - Support: `https://github.com/tylergs-dev/oma-article-converter-webext/issues`
 - Privacy: `https://github.com/tylergs-dev/oma-article-converter-webext/blob/main/privacy-policy.md`
 
+## Version notes (1.1.0)
+
+- Optional **AI conversion** fallback via OpenRouter (user-supplied API key)
+- Options page to save/clear the key locally
+- Local convert path unchanged; page HTML is sent to OpenRouter only when AI conversion is used
+
+## Reviewer note (paste into store submission)
+
+**What’s new:** Optional AI conversion fallback. Default “Convert this page” still runs entirely locally.
+
+**How to test:**
+1. Open any public news article.
+2. Click Convert — should work without an API key.
+3. Open Options → paste an OpenRouter key from https://openrouter.ai/keys → Save.
+4. Click **AI conversion** — preview should open with title/author/date and article body.
+5. Without a key, AI conversion should show an error directing you to Options.
+
+**Permissions:** New host access to `openrouter.ai` is only used for the AI path. The API key stays in `chrome.storage.local` on the device.
+
 ## Version notes (1.0.0)
 
 Initial release:
