@@ -11,6 +11,9 @@ const kiplingerUrl = "https://www.kiplinger.com/taxes/trump-tax-bill-summary";
 const morningstarOvervaluedUrl =
   "https://www.morningstar.com/stocks/11-newly-overvalued-stocks-this-week";
 
+const kiplingerSmallCapUrl =
+  "https://www.kiplinger.com/investing/etfs/604404/small-cap-etfs-to-buy-for-big-upside";
+
 describe("extractArticle", () => {
   it("keeps Morningstar glossary terms in a single paragraph", () => {
     const html = readFileSync(
@@ -69,5 +72,31 @@ describe("extractArticle", () => {
     expect(result.html).not.toMatch(/ad-unit/i);
     expect(result.html).not.toMatch(/Sponsored by Kiplinger/i);
     expect(result.html).toMatch(/budget reconciliation process/i);
+  });
+
+  it("keeps Kiplinger gallery ETF headings, stats lists, and writeups", () => {
+    const html = readFileSync(
+      join(process.cwd(), "test/fixtures/kiplinger-small-cap-etfs.html"),
+      "utf8",
+    );
+    const result = extractArticle(kiplingerSmallCapUrl, html);
+
+    expect(result.title).toMatch(/Small-Cap ETFs/i);
+    expect(result.author).toMatch(/Tony Dong/i);
+
+    expect(result.html).toMatch(/<h3>Vanguard Small-Cap Value ETF<\/h3>/i);
+    expect(result.html).toMatch(
+      /<ul>[\s\S]*?Expense ratio:[\s\S]*?0\.05%[\s\S]*?SmB loading:[\s\S]*?0\.51[\s\S]*?<\/ul>/i,
+    );
+    expect(result.html).toMatch(/<h3>iShares Russell 2000 ETF<\/h3>/i);
+    expect(result.html).toMatch(/<h3>Avantis U\.S\. Small Cap Equity ETF<\/h3>/i);
+    expect(result.html).toMatch(
+      /Fee-conscious investors looking for broad small-cap exposure/i,
+    );
+
+    expect(result.html).not.toMatch(/Related content/i);
+    expect(result.html).not.toMatch(/7 Reasons Your Portfolio/i);
+    expect(result.html).not.toMatch(/<img/i);
+    expect(result.html).not.toMatch(/Image credit/i);
   });
 });

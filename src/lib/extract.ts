@@ -37,6 +37,27 @@ function stripInArticlePromos(document: Document): void {
   }
 }
 
+/**
+ * Kiplinger (Future CMS) puts fund writeups in `.gallery__text` beside images,
+ * as a sibling of `.article__body`. Readability drops the gallery with the
+ * figures, so hoist the textual blocks into the article container first.
+ */
+function hoistGalleryArticleText(document: Document): void {
+  const textBlocks = [...document.querySelectorAll(".gallery .gallery__text")];
+  if (!textBlocks.length) return;
+
+  const container = findArticleContainer(document) ?? document.body;
+
+  for (const textBlock of textBlocks) {
+    textBlock.querySelectorAll("aside, .ecom-root").forEach((el) => el.remove());
+    while (textBlock.firstChild) {
+      container.appendChild(textBlock.firstChild);
+    }
+  }
+
+  document.querySelectorAll(".gallery").forEach((gallery) => gallery.remove());
+}
+
 function findArticleContainer(document: Document): Element | null {
   for (const selector of ARTICLE_CONTAINER_SELECTORS) {
     for (const element of document.querySelectorAll(selector)) {
@@ -222,6 +243,12 @@ function polishArticleBody(root: Element, title: string | null): void {
   root.querySelectorAll("h2, h3, h4").forEach((heading) => {
     const text = normalizeText(heading.textContent ?? "");
     if (isPromoHeading(text)) {
+      if (text.toLowerCase() === "related content") {
+        const sibling = heading.nextElementSibling;
+        if (sibling && (sibling.tagName === "UL" || sibling.tagName === "OL")) {
+          sibling.remove();
+        }
+      }
       heading.remove();
       return;
     }
@@ -275,6 +302,7 @@ function polishSplitParagraphs(root: Element): void {
 function extractBodyHtml(html: string): string | null {
   const { document } = parseHTML(html);
   stripInArticlePromos(document);
+  hoistGalleryArticleText(document);
   const container = findArticleContainer(document);
 
   const readable = parseReadableArticle(document);
